@@ -161,7 +161,8 @@ def calculate_entropy(df, verbose=False):
         'canonical_composer': canonical_composer,
         'midi_filename': midi_filename,
         'entropy_pitch': entropy_pitch,
-        'entropy_interval': entropy_interval
+        'entropy_interval': entropy_interval,
+        'entropy_chord': entropy_chord
     })
     
     return result_df
