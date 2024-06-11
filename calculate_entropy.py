@@ -127,6 +127,37 @@ def calculate_entropy_chord(midi_path):
     chord_counts = Counter(chords)
     return entropy(chord_counts)
 
+# Calculate the entropy of the time interval distribution in a MIDI file
+def calculate_entropy_time_interval(midi_dict):
+    intervals = []
+    
+    for track in midi_dict.values():
+        if not track:
+            continue
+
+        # Sort by time
+        track.sort(key=lambda x: x['time'])
+
+        # Group notes by rounded time
+        grouped_notes = {}
+        for note in track:
+            rounded_time = note['time'] // 12 * 12
+            if rounded_time not in grouped_notes:
+                grouped_notes[rounded_time] = []
+            grouped_notes[rounded_time].append(note['note'])
+
+        # Calculate time intervals
+        previous_time = None
+        for time in sorted(grouped_notes.keys()):
+            if previous_time:
+                intervals.append(time - previous_time)
+            previous_time = time
+
+    # Count the intervals and calculate entropy
+    interval_counts = Counter(intervals)
+    return entropy(interval_counts)
+
+
 def calculate_entropy(df, verbose=False):
     # Initialize lists to store the results
     canonical_composer = []
@@ -134,6 +165,7 @@ def calculate_entropy(df, verbose=False):
     entropy_pitch = []
     entropy_interval = []
     entropy_chord = []
+    entropy_time_interval = []
     
     # Total number of MIDI files
     total_files = len(df)
@@ -144,30 +176,33 @@ def calculate_entropy(df, verbose=False):
         midi_filename.append(df.iloc[i]['midi_filename'])
         midi_file_path = base_dir + df.iloc[i]['midi_filename']
         midi_dict = get_midi_info(midi_file_path)
-        entropy_pitch_value = calculate_entropy_pitch(midi_dict)
+        #entropy_pitch_value = calculate_entropy_pitch(midi_dict)
+        #if (verbose):
+        #    print(f'{df.iloc[i]["midi_filename"]}, pitch: {entropy_pitch_value}')
+        #entropy_interval_value = calculate_entropy_interval(midi_dict)
+        #if (verbose):
+        #    print(f'{df.iloc[i]["midi_filename"]}, interval: {entropy_interval_value}')
+        #entropy_chord_value = calculate_entropy_chord(midi_file_path)
+        #if (verbose):
+        #    print(f'{df.iloc[i]["midi_filename"]}, chord: {entropy_chord_value}')
+        entropy_time_interval_value = calculate_entropy_time_interval(midi_dict)
         if (verbose):
-            print(f'{df.iloc[i]["midi_filename"]}, pitch: {entropy_pitch_value}')
-        entropy_interval_value = calculate_entropy_interval(midi_dict)
-        if (verbose):
-            print(f'{df.iloc[i]["midi_filename"]}, interval: {entropy_interval_value}')
-        entropy_chord_value = calculate_entropy_chord(midi_file_path)
-        if (verbose):
-            print(f'{df.iloc[i]["midi_filename"]}, chord: {entropy_chord_value}')
-        entropy_pitch.append(entropy_pitch_value)
-        entropy_interval.append(entropy_interval_value)
-        entropy_chord.append(entropy_chord_value)    
+            print(f'{df.iloc[i]["midi_filename"]}, time interval: {entropy_time_interval_value}')
+        #entropy_pitch.append(entropy_pitch_value)
+        #entropy_interval.append(entropy_interval_value)
+        #entropy_chord.append(entropy_chord_value)    
+        entropy_time_interval.append(entropy_time_interval_value)
     # Create the new dataframe with the results
     result_df = pd.DataFrame({
         'canonical_composer': canonical_composer,
         'midi_filename': midi_filename,
-        'entropy_pitch': entropy_pitch,
-        'entropy_interval': entropy_interval,
-        'entropy_chord': entropy_chord
+        #'entropy_pitch': entropy_pitch,
+        #'entropy_interval': entropy_interval,
+        #'entropy_chord': entropy_chord,
+        'entropy_time_interval': entropy_time_interval
     })
     
     return result_df
-
-
 '''
 if __name__ == '__main__':
     #print(calculate_entropy_pitch(base_dir + '2018/MIDI-Unprocessed_Chamber2_MID--AUDIO_09_R3_2018_wav--1.midi'))
@@ -178,8 +213,9 @@ if __name__ == '__main__':
     print(calculate_entropy_pitch(sample_dict))
     print(calculate_entropy_interval(sample_dict))
     print(calculate_entropy_chord(base_dir + '2018/MIDI-Unprocessed_Chamber2_MID--AUDIO_09_R3_2018_wav--1.midi'))
+    print(calculate_entropy_time_interval(sample_dict))
 '''
-
+'''
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Calculate the entropy of the given composers.')
     parser.add_argument('-c', '--composer_names', nargs='+', help='The names of the composers to filter.')
@@ -193,7 +229,16 @@ if __name__ == '__main__':
     result_df = calculate_entropy(df, args.verbose)
 
     # Save the result DataFrame as a CSV file
-    result_df.to_csv('entropy.csv', index=False)
+    result_df.to_csv('entropy_time_interval.csv', index=False)
 
     # Display the result DataFrame
     print(result_df)
+'''
+
+if __name__ == '__main__':
+    # merge two dataframes from entropy.csv and entropy_time_interval.csv
+    # then save the merged df into a new csv file
+    entropy_df = pd.read_csv('entropy.csv')
+    entropy_time_interval_df = pd.read_csv('entropy_time_interval.csv')
+    merged_df = pd.merge(entropy_df, entropy_time_interval_df, on=['canonical_composer', 'midi_filename'])
+    merged_df.to_csv('entropy_merged.csv', index=False)
